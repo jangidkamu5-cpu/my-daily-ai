@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>My Daily AI</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f5f7fb;color:#111827}
+header{background:#111827;color:white;padding:22px 18px;border-radius:0 0 24px 24px}header h1{margin:0 0 5px;font-size:26px}header p{margin:0;opacity:.8}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:white;position:sticky;top:0;z-index:2}
+nav button{border:0;background:#eef2f7;padding:10px 14px;border-radius:12px;white-space:nowrap;font-weight:600}
+nav button.active{background:#111827;color:white}
+main{max-width:850px;margin:auto;padding:18px}.card{background:white;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px #0000000b}
+h2{margin-top:0}input,textarea,select{width:100%;padding:12px;border:1px solid #d8dee8;border-radius:12px;font-size:15px;margin:6px 0 10px}
+textarea{min-height:100px;resize:vertical}.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:#111827;color:white;cursor:pointer}.secondary{background:#e9eef5;color:#111827}
+.task{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #edf0f4}.task:last-child{border-bottom:0}.task span{flex:1}.done{text-decoration:line-through;opacity:.5}
+.small{font-size:13px;color:#667085}.pill{display:inline-block;background:#eef2ff;padding:5px 9px;border-radius:999px;font-size:12px;margin:3px}
+.chat{min-height:250px;max-height:430px;overflow:auto;background:#f8fafc;border-radius:14px;padding:12px}.msg{padding:10px 12px;border-radius:14px;margin:7px 0;max-width:90%}.user{background:#111827;color:white;margin-left:auto}.ai{background:#e9eef5}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header><h1>🚀 My Daily AI</h1><p>आपके Daily Work, Notes और YouTube का personal assistant</p></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<script>
+const KEY="myDailyAI_v1";
+let data=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[],"notes":[],"topics":[],"chat":[]}');
+let page="home";
+const pages=[
+ ["home","🏠 Home"],["tasks","✅ Tasks"],["notes","📝 Notes"],["youtube","🎬 YouTube"],["topics","💡 Topics"],["ai","🤖 AI"]
+];
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function nav(){document.querySelector("#nav").innerHTML=pages.map(p=>`<button class="${page==p[0]?'active':''}" onclick="go('${p[0]}')">${p[1]}</button>`).join("")}
+function go(p){page=p;render()}
+function render(){nav();let a=document.querySelector("#app");
+ if(page==="home")a.innerHTML=`<div class="card"><h2>आज का काम</h2><p class="small">${new Date().toLocaleDateString('hi-IN',{weekday:'long',day:'numeric',month:'long'})}</p>${taskList(5)}<button class="btn" onclick="go('tasks')">+ नया Task</button></div><div class="card"><h2>⚡ Quick Actions</h2><div class="row"><button class="btn secondary" onclick="go('notes')">📝 Note</button><button class="btn secondary" onclick="go('youtube')">🎬 YouTube</button></div></div>`;
+ if(page==="tasks")a.innerHTML=`<div class="card"><h2>Daily Tasks</h2><input id="task" placeholder="आज क्या करना है?"><div class="row"><select id="priority"><option>Normal</option><option>High</option><option>Low</option></select><button class="btn" onclick="addTask()">+ Add</button></div></div><div class="card">${taskList()}</div>`;
+ if(page==="notes")a.innerHTML=`<div class="card"><h2>📝 Notes</h2><input id="nt" placeholder="Note title"><textarea id="nb" placeholder="अपना note लिखें..."></textarea><button class="btn" onclick="addNote()">Save Note</button></div>${data.notes.slice().reverse().map(n=>`<div class="card"><h3>${esc(n.title)}</h3><p>${esc(n.body).replace(/\n/g,"<br>")}</p><div class="small">${n.date}</div></div>`).join("")}`;
+ if(page==="youtube")a.innerHTML=`<div class="card"><h2>🎬 YouTube Work</h2><input id="yt" placeholder="Video topic / idea"><textarea id="ys" placeholder="Script / research notes"></textarea><button class="btn" onclick="addTopic('youtube')">Save YouTube Work</button></div><div class="card"><h3>💡 Quick AI Prompts</h3><p class="pill" onclick="aiPrompt('इस topic पर YouTube Shorts idea दो')">Shorts idea</p><p class="pill" onclick="aiPrompt('इस topic के लिए catchy YouTube title और hashtags दो')">Title + Hashtags</p><p class="pill" onclick="aiPrompt('इस topic पर 30 सेकंड की Hindi script बनाओ')">30 sec script</p></div>`;
+ if(page==="topics")a.innerHTML=`<div class="card"><h2>💡 New Topic</h2><input id="tp" placeholder="Topic name"><textarea id="tr" placeholder="Research / ideas / notes"></textarea><button class="btn" onclick="addTopic('topic')">Save Topic</button></div>${data.topics.slice().reverse().map(t=>`<div class="card"><h3>${esc(t.name)}</h3><span class="pill">${esc(t.type)}</span><p>${esc(t.body)}</p></div>`).join("")}`;
+ if(page==="ai")a.innerHTML=`<div class="card"><h2>🤖 AI Assistant</h2><div id="chat" class="chat">${data.chat.map(m=>`<div class="msg ${m.role}">${esc(m.text).replace(/\n/g,"<br>")}</div>`).join("")||'<div class="small">AI Assistant के लिए अपना सवाल नीचे लिखें।<br>उदाहरण: “आज मेरे काम की priority बनाओ।”</div>'}</div><textarea id="prompt" placeholder="AI से पूछें..."></textarea><button class="btn" onclick="askAI()">Send</button></div>`;
+}
+function taskList(limit=999){let arr=data.tasks.slice(0,limit);return arr.length?arr.map((t,i)=>`<div class="task"><input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})"><span class="${t.done?'done':''}">${esc(t.text)} <small>(${esc(t.priority)})</small></span></div>`).join(""):'<p class="small">अभी कोई task नहीं है।</p>'}
+function addTask(){let x=document.querySelector("#task").value.trim();if(!x)return;data.tasks.unshift({text:x,priority:document.querySelector("#priority").value,done:false});save();render()}
+function toggleTask(i){data.tasks[i].done=!data.tasks[i].done;save();render()}
+function addNote(){let t=document.querySelector("#nt").value.trim(),b=document.querySelector("#nb").value.trim();if(!b)return;data.notes.push({title:t||"Untitled Note",body:b,date:new Date().toLocaleString('hi-IN')});save();render()}
+function addTopic(type){let name=document.querySelector(type==="youtube"?"#yt":"#tp").value.trim(),body=document.querySelector(type==="youtube"?"#ys":"#tr").value.trim();if(!name)return;data.topics.push({name,body,type:type==="youtube"?"YouTube":"New Topic"});save();render()}
+function aiPrompt(p){go("ai");setTimeout(()=>{document.querySelector("#prompt").value=p},50)}
+async function askAI(){
+ let p=document.querySelector("#prompt").value.trim();if(!p)return;
+ data.chat.push({role:"user",text:p});save();render();
+ // Demo/offline assistant. Connect your server-side OpenAI API route here.
+ let reply="मैंने आपका सवाल save कर लिया है। अभी यह offline demo mode है। OpenAI API जोड़ने के बाद मैं आपके tasks, notes और YouTube topics के आधार पर वास्तविक AI जवाब दूँगा।";
+ if(/आज|काम|task|priority/i.test(p)) reply="आज पहले High Priority task पूरा करें, फिर YouTube topic research और उसके बाद script/thumbnail पर काम करें।";
+ if(/script|स्क्रिप्ट/i.test(p)) reply="Topic बताइए; मैं hook → main content → CTA के format में Hindi script तैयार कर सकता हूँ।";
+ data.chat.push({role:"ai",text:reply});save();render();
+}
+render();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body></html>
